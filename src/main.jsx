@@ -42,10 +42,9 @@ const modelById = new Map(models.map(model => [model.id, model]));
 
 function App(){
   const lanes = [
-    ['lane-one', '生成'],
+    ['lane-one', '生成 / 推理'],
     ['lane-two', '理解'],
     ['lane-three', '多模态'],
-    ['lane-four', '推理'],
   ];
   return <>
     <a className="skip-link" href="#main-content">跳到主要内容</a>
@@ -68,6 +67,7 @@ function App(){
       <div className="map-heading"><div><span className="section-kicker">2017—2025</span><h2>完整时间树</h2></div></div>
       <div className="atlas-wrap" aria-label="Transformer 模型时间树，可横向滚动浏览">
         <div className="atlas" style={{'--count':years.length}}>
+          <div className="lane-ribbons" aria-hidden="true">{lanes.map(([className])=><i className={className} key={className}></i>)}</div>
           <div className="lane-labels" aria-hidden="true">{lanes.map(([className,label])=><span className={className} key={className}>{label}</span>)}</div>
           {years.map((y,i)=><div className={`year ${i===0?'year-start':''}`} key={y} style={{left:`${(i/(years.length-1))*100}%`}}><span>{y}</span><i></i></div>)}
           <svg className="connections" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
@@ -75,8 +75,8 @@ function App(){
             {models.flatMap(model => model.next.map(targetId => {
               const target = modelById.get(targetId); if (!target) return null;
               const from = positionFor(model); const to = positionFor(target);
-              const start = from.x + 1.55; const end = to.x - 1.7; const span = Math.max(1, end - start);
-              const path = `M ${start} ${from.y} C ${start + span * .42} ${from.y}, ${end - span * .42} ${to.y}, ${end} ${to.y}`;
+              const start = from.x + 1.35; const end = to.x - 1.55; const span = Math.max(1, end - start); const lead = Math.min(7.4, span * .46);
+              const path = `M ${start} ${from.y} C ${start + lead} ${from.y}, ${end - lead} ${to.y}, ${end} ${to.y}`;
               return <path key={`${model.id}-${targetId}`} className={`connection branch-${branchFor(model)}`} d={path} pathLength="1" markerEnd="url(#mind-arrow)" style={{'--delay':`${(model.year-2017)*.075}s`}} />;
             }))}
           </svg>
@@ -91,13 +91,13 @@ function App(){
   </>
 }
 
-function branchFor(m){ if(m.architecture==='MoE' || m.tags.includes('Reasoning')) return 'reasoning'; if(m.modality!=='Text') return 'multimodal'; if(m.architecture==='Encoder-only' || m.architecture==='Encoder–Decoder') return 'understanding'; return 'generation'; }
-function laneFor(m){ return {generation:18,understanding:39,multimodal:62,reasoning:83}[branchFor(m)]; }
+function branchFor(m){ if(m.modality!=='Text') return 'multimodal'; if(m.architecture==='Encoder-only' || m.architecture==='Encoder–Decoder') return 'understanding'; return 'generation'; }
+function laneFor(m){ return {generation:22,understanding:51,multimodal:80}[branchFor(m)]; }
 function positionFor(model){
   const siblings=models.filter(item=>item.year===model.year && branchFor(item)===branchFor(model)).sort((a,b)=>a.date.localeCompare(b.date)||a.name.localeCompare(b.name));
   const index=siblings.findIndex(item=>item.id===model.id); const middle=(siblings.length-1)/2;
   const month=Number(model.date.slice(-2));
-  return { x:((model.year-2017)+(month/12))/8*100+(index-middle)*.18, y:laneFor(model)+(index-middle)*6.2 };
+  return { x:((model.year-2017)+(month/12))/8*100+(index-middle)*.34, y:laneFor(model)+(index-middle)*4.2 };
 }
 function markFor(m){ if(/GPT|ChatGPT|o1/.test(m.name)) return '◎'; if(/Gemini/.test(m.name)) return '✦'; if(/LLaMA/.test(m.name)) return 'L'; if(/Qwen/.test(m.name)) return 'Q'; if(/DeepSeek/.test(m.name)) return 'D'; if(/Mistral|Mixtral/.test(m.name)) return 'M'; if(/BERT|RoBERTa|XLNet|T5/.test(m.name)) return 'B'; if(/ViT|CLIP|Flamingo|LLaVA/.test(m.name)) return '◈'; return 'T'; }
 createRoot(document.getElementById('root')).render(<App/>);
