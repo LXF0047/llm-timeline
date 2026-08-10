@@ -51,7 +51,11 @@ function App(){
     ['lane-two', '理解'],
     ['lane-three', '多模态'],
   ];
-  const layoutFor=model=>manualPositions[model.id]||positionFor(model);
+  const timelineAnchors=makeTimelineAnchors(manualPositions);
+  const layoutFor=model=>{
+    const base=positionFor(model); const manual=manualPositions[model.id];
+    return {x:warpTimeline(base.x,timelineAnchors),y:manual?.y??base.y};
+  };
   const setNodePosition=(id,x,y)=>setManualPositions(current=>({...current,[id]:{x:clamp(x,1.4,98.1),y:clamp(y,6,94)}}));
   const moveNode=(id,deltaX,deltaY)=>setManualPositions(current=>{
     const origin=current[id]||positionFor(modelById.get(id));
@@ -92,7 +96,7 @@ function App(){
         <div className="atlas" ref={atlasRef} style={{'--count':years.length}} onPointerMove={dragNode} onPointerUp={endDrag} onPointerCancel={endDrag}>
           <div className="lane-ribbons" aria-hidden="true">{lanes.map(([className])=><i className={className} key={className}></i>)}</div>
           <div className="lane-labels" aria-hidden="true">{lanes.map(([className,label])=><span className={className} key={className}>{label}</span>)}</div>
-          {years.map((y,i)=><div className={`year ${i===0?'year-start':''}`} key={y} style={{left:`${yearPosition(y)}%`}}><span>{y}</span><i></i></div>)}
+          {years.map((y,i)=><div className={`year ${i===0?'year-start':''}`} key={y} style={{left:`${warpTimeline(yearPosition(y),timelineAnchors)}%`}}><span>{y}</span><i></i></div>)}
           <svg className="connections" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
             <defs><marker id="mind-arrow" markerWidth="1" markerHeight="1" refX=".88" refY=".5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 .95 .5 0 1z" fill="context-stroke" /></marker></defs>
             {timelineEdges.map((edge,index) => {
@@ -104,7 +108,7 @@ function App(){
           </svg>
           {models.map((model,index)=>{
             const position=layoutFor(model); const isMulti=model.modality!=='Text'; const labelUp=(index + Math.round(position.y)) % 3 === 0; const isDragging=dragging?.id===model.id;
-            return <article key={model.id} className={`node ${model.level==='核心'?'core-node':'important-node'} branch-${branchFor(model)} ${isMulti?'multi':''} ${labelUp?'label-up':''} ${isDragging?'is-dragging':''}`} aria-label={`${model.name}，${model.date}，可拖动`} title="拖动调整位置；双击还原" tabIndex="0" onPointerDown={event=>beginDrag(event,model)} onDoubleClick={()=>resetNode(model.id)} onKeyDown={event=>{const moves={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]}; const move=moves[event.key]; if(move){event.preventDefault();moveNode(model.id,...move)}}} style={{left:`${position.x}%`,top:`${position.y}%`,'--delay':`${(model.year-2017)*.075+(Number(model.date.slice(-2))/140)}s`}}><span className="node-mark" aria-hidden="true">{markFor(model)}</span><span className="node-card"><b>{model.name}</b><small>{model.date}</small></span></article>
+            return <article key={model.id} className={`node ${model.level==='核心'?'core-node':'important-node'} branch-${branchFor(model)} ${isMulti?'multi':''} ${labelUp?'label-up':''} ${isDragging?'is-dragging':''}`} aria-label={`${model.name}，${model.date}，可拖动`} title="横向拖动同步伸缩时间轴；双击还原" tabIndex="0" onPointerDown={event=>beginDrag(event,model)} onDoubleClick={()=>resetNode(model.id)} onKeyDown={event=>{const moves={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]}; const move=moves[event.key]; if(move){event.preventDefault();moveNode(model.id,...move)}}} style={{left:`${position.x}%`,top:`${position.y}%`,'--delay':`${(model.year-2017)*.075+(Number(model.date.slice(-2))/140)}s`}}><span className="node-mark" aria-hidden="true">{markFor(model)}</span><span className="node-card"><b>{model.name}</b><small>{model.date}</small></span></article>
           })}
         </div>
       </div>
@@ -125,5 +129,21 @@ function yearPosition(year){ return year<2023 ? ((year-2017)/6)*42 : 42+((year-2
 function timelinePosition(year,month){ return year<2023 ? ((year-2017+(month/12))/6)*42 : 42+((year-2023+(month/12))/2.5)*58; }
 function portOffset(index,count){ return (index-(count-1)/2)*.72; }
 function clamp(value,min,max){ return Math.min(max,Math.max(min,value)); }
+function makeTimelineAnchors(manualPositions){
+  const anchors=[{from:0,to:0},{from:100,to:100}];
+  Object.entries(manualPositions).forEach(([id,position])=>{
+    const model=modelById.get(id); if(!model) return;
+    anchors.push({from:positionFor(model).x,to:position.x});
+  });
+  anchors.sort((a,b)=>a.from-b.from);
+  for(let index=1;index<anchors.length;index+=1) anchors[index].to=Math.max(anchors[index].to,anchors[index-1].to+.6);
+  for(let index=anchors.length-2;index>=0;index-=1) anchors[index].to=Math.min(anchors[index].to,anchors[index+1].to-.6);
+  return anchors;
+}
+function warpTimeline(value,anchors){
+  const end=anchors.findIndex(anchor=>anchor.from>=value); const right=end===-1?anchors.length-1:Math.max(1,end); const left=right-1;
+  const startAnchor=anchors[left]; const endAnchor=anchors[right]; const ratio=(value-startAnchor.from)/(endAnchor.from-startAnchor.from||1);
+  return startAnchor.to+(endAnchor.to-startAnchor.to)*ratio;
+}
 function markFor(m){ if(/GPT|ChatGPT|o1/.test(m.name)) return '◎'; if(/Gemini/.test(m.name)) return '✦'; if(/LLaMA/.test(m.name)) return 'L'; if(/Qwen/.test(m.name)) return 'Q'; if(/DeepSeek/.test(m.name)) return 'D'; if(/Mistral|Mixtral/.test(m.name)) return 'M'; if(/BERT|RoBERTa|XLNet|T5/.test(m.name)) return 'B'; if(/ViT|CLIP|Flamingo|LLaVA/.test(m.name)) return '◈'; return 'T'; }
 createRoot(document.getElementById('root')).render(<App/>);
