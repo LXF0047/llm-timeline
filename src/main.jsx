@@ -62,6 +62,7 @@ function App(){
     return {...current,[id]:{x:clamp(origin.x+deltaX,1.4,98.1),y:clamp(origin.y+deltaY,6,94)}};
   });
   const beginDrag=(event,model)=>{
+    if(model.id==='transformer') return;
     event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
     setDragging({id:model.id,pointerId:event.pointerId});
@@ -107,8 +108,9 @@ function App(){
             })}
           </svg>
           {models.map((model,index)=>{
-            const position=layoutFor(model); const isMulti=model.modality!=='Text'; const labelUp=(index + Math.round(position.y)) % 3 === 0; const isDragging=dragging?.id===model.id;
-            return <article key={model.id} className={`node ${model.level==='核心'?'core-node':'important-node'} branch-${branchFor(model)} ${isMulti?'multi':''} ${labelUp?'label-up':''} ${isDragging?'is-dragging':''}`} aria-label={`${model.name}，${model.date}，可拖动`} title="横向拖动同步伸缩时间轴；双击还原" tabIndex="0" onPointerDown={event=>beginDrag(event,model)} onDoubleClick={()=>resetNode(model.id)} onKeyDown={event=>{const moves={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]}; const move=moves[event.key]; if(move){event.preventDefault();moveNode(model.id,...move)}}} style={{left:`${position.x}%`,top:`${position.y}%`,'--delay':`${(model.year-2017)*.075+(Number(model.date.slice(-2))/140)}s`}}><span className="node-mark" aria-hidden="true">{markFor(model)}</span><span className="node-card"><b>{model.name}</b><small>{model.date}</small></span></article>
+            const position=layoutFor(model); const isMulti=model.modality!=='Text'; const labelUp=(index + Math.round(position.y)) % 3 === 0; const isDragging=dragging?.id===model.id; const isRoot=model.id==='transformer';
+            const dragProps=isRoot?{}:{onPointerDown:event=>beginDrag(event,model),onDoubleClick:()=>resetNode(model.id),onKeyDown:event=>{const moves={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]}; const move=moves[event.key]; if(move){event.preventDefault();moveNode(model.id,...move)}}};
+            return <article key={model.id} className={`node ${model.level==='核心'?'core-node':'important-node'} branch-${branchFor(model)} ${isMulti?'multi':''} ${labelUp?'label-up':''} ${isDragging?'is-dragging':''} ${isRoot?'is-root':''}`} aria-label={`${model.name}，${model.date}，${isRoot?'固定起点':'可拖动'}`} title={isRoot?'时间树起点':'横向拖动同步伸缩时间轴；双击还原'} tabIndex={isRoot?-1:0} {...dragProps} style={{left:`${position.x}%`,top:`${position.y}%`,'--delay':`${(model.year-2017)*.075+(Number(model.date.slice(-2))/140)}s`}}><span className="node-mark" aria-hidden="true">{markFor(model)}</span><span className="node-card"><b>{model.name}</b><small>{model.date}</small></span></article>
           })}
         </div>
       </div>
