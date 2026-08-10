@@ -39,6 +39,7 @@ const models = [
 
 const years = [2017,2018,2019,2020,2021,2022,2023,2024,2025];
 const modelById = new Map(models.map(model => [model.id, model]));
+const timelineEdges = models.flatMap(model => model.next.map(targetId => ({ source:model, target:modelById.get(targetId) }))).filter(edge => edge.target).filter((edge,index,all) => all.findIndex(candidate => candidate.target.id===edge.target.id)===index);
 
 function App(){
   const lanes = [
@@ -72,13 +73,12 @@ function App(){
           {years.map((y,i)=><div className={`year ${i===0?'year-start':''}`} key={y} style={{left:`${yearPosition(y)}%`}}><span>{y}</span><i></i></div>)}
           <svg className="connections" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
             <defs><marker id="mind-arrow" markerWidth="1" markerHeight="1" refX=".88" refY=".5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 .95 .5 0 1z" fill="context-stroke" /></marker></defs>
-            {models.flatMap(model => model.next.map(targetId => {
-              const target = modelById.get(targetId); if (!target) return null;
-              const from = positionFor(model); const to = positionFor(target);
-              const start = from.x + 1.35; const end = to.x - 1.55; const span = Math.max(1, end - start); const lead = Math.min(7.4, span * .46);
-              const path = `M ${start} ${from.y} C ${start + lead} ${from.y}, ${end - lead} ${to.y}, ${end} ${to.y}`;
-              return <path key={`${model.id}-${targetId}`} className={`connection branch-${branchFor(model)}`} d={path} pathLength="1" markerEnd="url(#mind-arrow)" style={{'--delay':`${(model.year-2017)*.075}s`}} />;
-            }))}
+            {timelineEdges.map((edge,index) => {
+              const from = positionFor(edge.source); const to = positionFor(edge.target); const siblings=timelineEdges.filter(item=>item.source.id===edge.source.id); const siblingIndex=siblings.findIndex(item=>item.target.id===edge.target.id);
+              const sourcePort=portOffset(siblingIndex,siblings.length); const start = from.x + 1.45; const end = to.x - 1.7; const span = Math.max(1, end - start); const lead = Math.min(8.6, span * .47);
+              const path = `M ${start} ${from.y+sourcePort} C ${start + lead} ${from.y+sourcePort}, ${end - lead} ${to.y}, ${end} ${to.y}`;
+              return <path key={`${edge.source.id}-${edge.target.id}`} className={`connection branch-${branchFor(edge.source)}`} d={path} pathLength="1" markerEnd="url(#mind-arrow)" style={{'--delay':`${(edge.source.year-2017)*.075+index*.012}s`}} />;
+            })}
           </svg>
           {models.map((model,index)=>{
             const position=positionFor(model); const isMulti=model.modality!=='Text'; const labelUp=(index + Math.round(position.y)) % 3 === 0;
@@ -101,5 +101,6 @@ function positionFor(model){
 }
 function yearPosition(year){ return year<2023 ? ((year-2017)/6)*42 : 42+((year-2023)/2.5)*58; }
 function timelinePosition(year,month){ return year<2023 ? ((year-2017+(month/12))/6)*42 : 42+((year-2023+(month/12))/2.5)*58; }
+function portOffset(index,count){ return (index-(count-1)/2)*.72; }
 function markFor(m){ if(/GPT|ChatGPT|o1/.test(m.name)) return '◎'; if(/Gemini/.test(m.name)) return '✦'; if(/LLaMA/.test(m.name)) return 'L'; if(/Qwen/.test(m.name)) return 'Q'; if(/DeepSeek/.test(m.name)) return 'D'; if(/Mistral|Mixtral/.test(m.name)) return 'M'; if(/BERT|RoBERTa|XLNet|T5/.test(m.name)) return 'B'; if(/ViT|CLIP|Flamingo|LLaVA/.test(m.name)) return '◈'; return 'T'; }
 createRoot(document.getElementById('root')).render(<App/>);
