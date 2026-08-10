@@ -42,16 +42,18 @@ const modelById = new Map(models.map(model => [model.id, model]));
 
 function App(){
   const lanes = [
-    ['lane-one', 'GENERATIVE'],
-    ['lane-two', 'UNDERSTANDING'],
-    ['lane-three', 'MULTIMODAL'],
-    ['lane-four', 'REASONING'],
+    ['lane-one', '生成'],
+    ['lane-two', '理解'],
+    ['lane-three', '多模态'],
+    ['lane-four', '推理'],
   ];
-  return <main>
+  return <>
+    <a className="skip-link" href="#main-content">跳到主要内容</a>
     <header className="topbar">
       <a className="brand" href="#top" aria-label="Transformer Atlas 首页"><span className="brand-mark">✦</span><span>Transformer <b>Atlas</b></span></a>
-      <div className="top-meta">2017—2025</div>
+      <a className="top-meta" href="#map">时间树 <span aria-hidden="true">↓</span></a>
     </header>
+    <main id="main-content" tabIndex="-1">
 
     <section className="hero" id="top">
       <div className="hero-grid"></div><div className="orb orb-one"></div><div className="orb orb-two"></div>
@@ -63,7 +65,7 @@ function App(){
     </section>
 
     <section className="map-section" id="map">
-      <div className="map-heading"><div><span className="section-kicker">FULL TIMELINE</span><h2>完整时间树</h2></div></div>
+      <div className="map-heading"><div><span className="section-kicker">2017—2025</span><h2>完整时间树</h2></div></div>
       <div className="atlas-wrap" aria-label="Transformer 模型时间树，可横向滚动浏览">
         <div className="atlas" style={{'--count':years.length}}>
           <div className="lane-labels" aria-hidden="true">{lanes.map(([className,label])=><span className={className} key={className}>{label}</span>)}</div>
@@ -80,12 +82,13 @@ function App(){
           </svg>
           {models.map((model,index)=>{
             const position=positionFor(model); const isMulti=model.modality!=='Text'; const labelUp=(index + Math.round(position.y)) % 3 === 0;
-            return <div key={model.id} className={`node ${model.level==='核心'?'core-node':'important-node'} branch-${branchFor(model)} ${isMulti?'multi':''} ${labelUp?'label-up':''}`} style={{left:`${position.x}%`,top:`${position.y}%`,'--delay':`${(model.year-2017)*.075+(Number(model.date.slice(-2))/140)}s`}}><span className="node-mark">{markFor(model)}</span><span className="node-card"><b>{model.name}</b><small>{model.date}</small></span></div>
+            return <article key={model.id} className={`node ${model.level==='核心'?'core-node':'important-node'} branch-${branchFor(model)} ${isMulti?'multi':''} ${labelUp?'label-up':''}`} aria-label={`${model.name}，${model.date}`} style={{left:`${position.x}%`,top:`${position.y}%`,'--delay':`${(model.year-2017)*.075+(Number(model.date.slice(-2))/140)}s`}}><span className="node-mark" aria-hidden="true">{markFor(model)}</span><span className="node-card"><b>{model.name}</b><small>{model.date}</small></span></article>
           })}
         </div>
       </div>
     </section>
-  </main>
+    </main>
+  </>
 }
 
 function branchFor(m){ if(m.architecture==='MoE' || m.tags.includes('Reasoning')) return 'reasoning'; if(m.modality!=='Text') return 'multimodal'; if(m.architecture==='Encoder-only' || m.architecture==='Encoder–Decoder') return 'understanding'; return 'generation'; }
