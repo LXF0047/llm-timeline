@@ -1,4 +1,5 @@
-import { createRoot, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
+import { createRoot } from 'react-dom/client';
 import './styles.css';
 
 const models = [
