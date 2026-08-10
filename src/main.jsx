@@ -69,7 +69,7 @@ function App(){
         <div className="atlas" style={{'--count':years.length}}>
           <div className="lane-ribbons" aria-hidden="true">{lanes.map(([className])=><i className={className} key={className}></i>)}</div>
           <div className="lane-labels" aria-hidden="true">{lanes.map(([className,label])=><span className={className} key={className}>{label}</span>)}</div>
-          {years.map((y,i)=><div className={`year ${i===0?'year-start':''}`} key={y} style={{left:`${(i/(years.length-1))*100}%`}}><span>{y}</span><i></i></div>)}
+          {years.map((y,i)=><div className={`year ${i===0?'year-start':''}`} key={y} style={{left:`${yearPosition(y)}%`}}><span>{y}</span><i></i></div>)}
           <svg className="connections" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
             <defs><marker id="mind-arrow" markerWidth="1" markerHeight="1" refX=".88" refY=".5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 .95 .5 0 1z" fill="context-stroke" /></marker></defs>
             {models.flatMap(model => model.next.map(targetId => {
@@ -97,7 +97,9 @@ function positionFor(model){
   const siblings=models.filter(item=>item.year===model.year && branchFor(item)===branchFor(model)).sort((a,b)=>a.date.localeCompare(b.date)||a.name.localeCompare(b.name));
   const index=siblings.findIndex(item=>item.id===model.id); const middle=(siblings.length-1)/2;
   const month=Number(model.date.slice(-2));
-  return { x:((model.year-2017)+(month/12))/8*100+(index-middle)*.34, y:laneFor(model)+(index-middle)*4.2 };
+  return { x:timelinePosition(model.year,month)+(index-middle)*.42, y:laneFor(model)+(index-middle)*4.8 };
 }
+function yearPosition(year){ return year<2023 ? ((year-2017)/6)*42 : 42+((year-2023)/2.5)*58; }
+function timelinePosition(year,month){ return year<2023 ? ((year-2017+(month/12))/6)*42 : 42+((year-2023+(month/12))/2.5)*58; }
 function markFor(m){ if(/GPT|ChatGPT|o1/.test(m.name)) return '◎'; if(/Gemini/.test(m.name)) return '✦'; if(/LLaMA/.test(m.name)) return 'L'; if(/Qwen/.test(m.name)) return 'Q'; if(/DeepSeek/.test(m.name)) return 'D'; if(/Mistral|Mixtral/.test(m.name)) return 'M'; if(/BERT|RoBERTa|XLNet|T5/.test(m.name)) return 'B'; if(/ViT|CLIP|Flamingo|LLaVA/.test(m.name)) return '◈'; return 'T'; }
 createRoot(document.getElementById('root')).render(<App/>);
