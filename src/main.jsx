@@ -51,7 +51,6 @@ const architectures = ['全部架构','Encoder-only','Decoder-only','Encoder–D
 const modalities = ['全部模态','Text','Vision','Multimodal'];
 
 function App(){
-  const nodeIds = new Set(models.map(m => m.id));
   const lanes = [
     ['lane-one', 'GENERATIVE'],
     ['lane-two', 'UNDERSTANDING'],
@@ -81,14 +80,14 @@ function App(){
           {lanes.map(([className,label])=><div className={`lane ${className}`} key={className}><span>{label}</span></div>)}
           {years.map((y,i)=><div className="year" key={y} style={{left:`${(i/(years.length-1))*100}%`}}><span>{y}</span><i></i></div>)}
           {models.flatMap(m=>m.next.map(target=>{
-            const n=models.find(x=>x.id===target); if(!n || !nodeIds.has(m.id)||!nodeIds.has(n.id)) return null;
+            const n=models.find(x=>x.id===target); if(!n) return null;
             const start=((m.year-2017)+(Number(m.date.slice(-2))/12))/8*100; const end=((n.year-2017)+(Number(n.date.slice(-2))/12))/8*100;
-            const y1=laneFor(m), y2=laneFor(n); const width=Math.max(1,end-start);
-            return <div key={`${m.id}-${target}`} className={`line active-line branch-${branchFor(m)}`} style={{left:`${start}%`,top:`${y1}%`,'--length':`${width}%`,'--delay':`${(m.year-2017)*.09}s`,width:`${width}%`,transform:`rotate(${Math.atan2(y2-y1,width*1.8)*180/Math.PI}deg)`}}></div>
+            const y1=laneFor(m), y2=laneFor(n); const width=Math.max(1,end-start); const isDown=y2>=y1;
+            return <div key={`${m.id}-${target}`} className={`connector ${isDown?'down':'up'} branch-${branchFor(m)}`} style={{left:`${start}%`,top:`${Math.min(y1,y2)}%`,'--width':`${width}%`,'--height':`${Math.max(2,Math.abs(y2-y1))}%`,'--delay':`${(m.year-2017)*.09}s`}}></div>
           }))}
           {models.map(m=>{
             const x=((m.year-2017)+(Number(m.date.slice(-2))/12))/8*100; const isMulti=m.modality!=='Text';
-            return <div key={m.id} className={`node ${m.level==='核心'?'core-node':'important-node'} branch-${branchFor(m)} ${isMulti?'multi':''}`} style={{left:`${x}%`,top:`${laneFor(m)}%`,'--delay':`${(m.year-2017)*.1+(Number(m.date.slice(-2))/120)}s`}}><span className="node-dot"></span><span className="node-card"><b>{m.name}</b><small>{m.date}</small></span></div>
+            return <div key={m.id} className={`node ${m.level==='核心'?'core-node':'important-node'} branch-${branchFor(m)} ${isMulti?'multi':''}`} style={{left:`${x}%`,top:`${laneFor(m)}%`,'--delay':`${(m.year-2017)*.1+(Number(m.date.slice(-2))/120)}s`}}><span className="node-mark">{markFor(m)}</span><span className="node-card"><b>{m.name}</b><small>{m.date}</small></span></div>
           })}
         </div>
       </div>
@@ -98,4 +97,5 @@ function App(){
 
 function branchFor(m){ if(m.architecture==='MoE' || m.tags.includes('Reasoning')) return 'reasoning'; if(m.modality!=='Text') return 'multimodal'; if(m.architecture==='Encoder-only' || m.architecture==='Encoder–Decoder') return 'understanding'; return 'generation'; }
 function laneFor(m){ return {generation:18,understanding:39,multimodal:62,reasoning:83}[branchFor(m)]; }
+function markFor(m){ if(/GPT|ChatGPT|o1/.test(m.name)) return '◎'; if(/Gemini/.test(m.name)) return '✦'; if(/LLaMA/.test(m.name)) return 'L'; if(/Qwen/.test(m.name)) return 'Q'; if(/DeepSeek/.test(m.name)) return 'D'; if(/Mistral|Mixtral/.test(m.name)) return 'M'; if(/BERT|RoBERTa|XLNet|T5/.test(m.name)) return 'B'; if(/ViT|CLIP|Flamingo|LLaVA/.test(m.name)) return '◈'; return 'T'; }
 createRoot(document.getElementById('root')).render(<App/>);
