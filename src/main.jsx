@@ -1,4 +1,4 @@
-import { createRoot } from 'react-dom/client';
+import { createRoot, useRef, useState } from 'react';
 import './styles.css';
 
 const models = [
@@ -42,11 +42,32 @@ const modelById = new Map(models.map(model => [model.id, model]));
 const timelineEdges = models.flatMap(model => model.next.map(targetId => ({ source:model, target:modelById.get(targetId) }))).filter(edge => edge.target).filter((edge,index,all) => all.findIndex(candidate => candidate.target.id===edge.target.id)===index);
 
 function App(){
+  const [manualPositions,setManualPositions]=useState({});
+  const [dragging,setDragging]=useState(null);
+  const atlasRef=useRef(null);
   const lanes = [
     ['lane-one', '生成 / 推理'],
     ['lane-two', '理解'],
     ['lane-three', '多模态'],
   ];
+  const layoutFor=model=>manualPositions[model.id]||positionFor(model);
+  const setNodePosition=(id,x,y)=>setManualPositions(current=>({...current,[id]:{x:clamp(x,1.4,98.1),y:clamp(y,6,94)}}));
+  const moveNode=(id,deltaX,deltaY)=>setManualPositions(current=>{
+    const origin=current[id]||positionFor(modelById.get(id));
+    return {...current,[id]:{x:clamp(origin.x+deltaX,1.4,98.1),y:clamp(origin.y+deltaY,6,94)}};
+  });
+  const beginDrag=(event,model)=>{
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setDragging({id:model.id,pointerId:event.pointerId});
+  };
+  const dragNode=event=>{
+    if(!dragging||event.pointerId!==dragging.pointerId||!atlasRef.current) return;
+    const bounds=atlasRef.current.getBoundingClientRect();
+    setNodePosition(dragging.id,(event.clientX-bounds.left)/bounds.width*100,(event.clientY-bounds.top)/bounds.height*100);
+  };
+  const endDrag=event=>{ if(dragging&&event.pointerId===dragging.pointerId) setDragging(null); };
+  const resetNode=id=>setManualPositions(current=>{const next={...current}; delete next[id]; return next;});
   return <>
     <a className="skip-link" href="#main-content">跳到主要内容</a>
     <header className="topbar">
@@ -67,22 +88,22 @@ function App(){
     <section className="map-section" id="map">
       <div className="map-heading"><div><span className="section-kicker">2017—2025</span><h2>完整时间树</h2></div></div>
       <div className="atlas-wrap" aria-label="Transformer 模型时间树，可横向滚动浏览">
-        <div className="atlas" style={{'--count':years.length}}>
+        <div className="atlas" ref={atlasRef} style={{'--count':years.length}} onPointerMove={dragNode} onPointerUp={endDrag} onPointerCancel={endDrag}>
           <div className="lane-ribbons" aria-hidden="true">{lanes.map(([className])=><i className={className} key={className}></i>)}</div>
           <div className="lane-labels" aria-hidden="true">{lanes.map(([className,label])=><span className={className} key={className}>{label}</span>)}</div>
           {years.map((y,i)=><div className={`year ${i===0?'year-start':''}`} key={y} style={{left:`${yearPosition(y)}%`}}><span>{y}</span><i></i></div>)}
           <svg className="connections" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
             <defs><marker id="mind-arrow" markerWidth="1" markerHeight="1" refX=".88" refY=".5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 .95 .5 0 1z" fill="context-stroke" /></marker></defs>
             {timelineEdges.map((edge,index) => {
-              const from = positionFor(edge.source); const to = positionFor(edge.target); const siblings=timelineEdges.filter(item=>item.source.id===edge.source.id); const siblingIndex=siblings.findIndex(item=>item.target.id===edge.target.id);
+              const from = layoutFor(edge.source); const to = layoutFor(edge.target); const siblings=timelineEdges.filter(item=>item.source.id===edge.source.id); const siblingIndex=siblings.findIndex(item=>item.target.id===edge.target.id);
               const sourcePort=portOffset(siblingIndex,siblings.length); const start = from.x + 1.45; const end = to.x - 1.7; const span = Math.max(1, end - start); const lead = Math.min(8.6, span * .47);
               const path = `M ${start} ${from.y+sourcePort} C ${start + lead} ${from.y+sourcePort}, ${end - lead} ${to.y}, ${end} ${to.y}`;
               return <path key={`${edge.source.id}-${edge.target.id}`} className={`connection branch-${branchFor(edge.source)}`} d={path} pathLength="1" markerEnd="url(#mind-arrow)" style={{'--delay':`${(edge.source.year-2017)*.075+index*.012}s`}} />;
             })}
           </svg>
           {models.map((model,index)=>{
-            const position=positionFor(model); const isMulti=model.modality!=='Text'; const labelUp=(index + Math.round(position.y)) % 3 === 0;
-            return <article key={model.id} className={`node ${model.level==='核心'?'core-node':'important-node'} branch-${branchFor(model)} ${isMulti?'multi':''} ${labelUp?'label-up':''}`} aria-label={`${model.name}，${model.date}`} style={{left:`${position.x}%`,top:`${position.y}%`,'--delay':`${(model.year-2017)*.075+(Number(model.date.slice(-2))/140)}s`}}><span className="node-mark" aria-hidden="true">{markFor(model)}</span><span className="node-card"><b>{model.name}</b><small>{model.date}</small></span></article>
+            const position=layoutFor(model); const isMulti=model.modality!=='Text'; const labelUp=(index + Math.round(position.y)) % 3 === 0; const isDragging=dragging?.id===model.id;
+            return <article key={model.id} className={`node ${model.level==='核心'?'core-node':'important-node'} branch-${branchFor(model)} ${isMulti?'multi':''} ${labelUp?'label-up':''} ${isDragging?'is-dragging':''}`} aria-label={`${model.name}，${model.date}，可拖动`} title="拖动调整位置；双击还原" tabIndex="0" onPointerDown={event=>beginDrag(event,model)} onDoubleClick={()=>resetNode(model.id)} onKeyDown={event=>{const moves={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]}; const move=moves[event.key]; if(move){event.preventDefault();moveNode(model.id,...move)}}} style={{left:`${position.x}%`,top:`${position.y}%`,'--delay':`${(model.year-2017)*.075+(Number(model.date.slice(-2))/140)}s`}}><span className="node-mark" aria-hidden="true">{markFor(model)}</span><span className="node-card"><b>{model.name}</b><small>{model.date}</small></span></article>
           })}
         </div>
       </div>
@@ -102,5 +123,6 @@ function positionFor(model){
 function yearPosition(year){ return year<2023 ? ((year-2017)/6)*42 : 42+((year-2023)/2.5)*58; }
 function timelinePosition(year,month){ return year<2023 ? ((year-2017+(month/12))/6)*42 : 42+((year-2023+(month/12))/2.5)*58; }
 function portOffset(index,count){ return (index-(count-1)/2)*.72; }
+function clamp(value,min,max){ return Math.min(max,Math.max(min,value)); }
 function markFor(m){ if(/GPT|ChatGPT|o1/.test(m.name)) return '◎'; if(/Gemini/.test(m.name)) return '✦'; if(/LLaMA/.test(m.name)) return 'L'; if(/Qwen/.test(m.name)) return 'Q'; if(/DeepSeek/.test(m.name)) return 'D'; if(/Mistral|Mixtral/.test(m.name)) return 'M'; if(/BERT|RoBERTa|XLNet|T5/.test(m.name)) return 'B'; if(/ViT|CLIP|Flamingo|LLaVA/.test(m.name)) return '◈'; return 'T'; }
 createRoot(document.getElementById('root')).render(<App/>);
