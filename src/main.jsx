@@ -37,18 +37,8 @@ const models = [
   { id:'llama4', name:'Llama 4', date:'2025.04', year:2025, org:'Meta AI', architecture:'MoE', modality:'Multimodal', params:'400B total', innovation:'开放权重模型进入原生多模态与 MoE 结合阶段。', desc:'Llama 4 将多模态、MoE 和开放生态放在同一模型家族中，体现开源主线与前沿架构的进一步交汇。', tags:['MoE','Multimodal','Open Weights'], level:'核心', open:true, china:false, next:[] },
 ];
 
-const paths = {
-  all: { label:'完整时间线', hint:'从 Transformer 出发，按时间建立全局认知。', ids:models.map(m => m.id) },
-  decoder: { label:'Decoder-only 主线', hint:'从 GPT 到 LLaMA、Mistral 与 DeepSeek 的生成式主干。', ids:['transformer','gpt1','gpt2','gpt3','instruct','chatgpt','llama','llama2','mistral','mixtral','llama3','qwen2','deepseekv3','deepseekr1','llama4'] },
-  encoder: { label:'Encoder-only 理解线', hint:'从 BERT 认识表征学习与语言理解范式。', ids:['transformer','bert','roberta','xlnet','vit','clip'] },
-  multimodal: { label:'多模态演进线', hint:'从 ViT / CLIP 出发，走到原生多模态模型。', ids:['transformer','vit','clip','flamingo','llava','gpt4v','gemini','gemini15','gpt4o','qwen2vl','llama4'] },
-  open: { label:'开源优先', hint:'聚焦可以下载权重、复现与二次开发的关键节点。', ids:models.filter(m => m.open).map(m => m.id) },
-  china: { label:'中国相关路径', hint:'追踪 Qwen 与 DeepSeek 为代表的国内开源分支。', ids:['transformer','llama','qwen','llama2','qwen2','qwen2vl','qwen25','deepseekv3','deepseekr1'] }
-};
-
 const years = [2017,2018,2019,2020,2021,2022,2023,2024,2025];
-const architectures = ['全部架构','Encoder-only','Decoder-only','Encoder–Decoder','MoE','Hybrid'];
-const modalities = ['全部模态','Text','Vision','Multimodal'];
+const modelById = new Map(models.map(model => [model.id, model]));
 
 function App(){
   const lanes = [
@@ -74,20 +64,23 @@ function App(){
 
     <section className="map-section" id="map">
       <div className="map-heading"><div><span className="section-kicker">FULL TIMELINE</span><h2>完整时间树</h2></div></div>
-      <div className="atlas-wrap">
-        <div className="lane-labels"><span>GENERATION</span><span>UNDERSTANDING</span><span>VISION &amp; MULTIMODAL</span><span>SPARSE &amp; REASONING</span></div>
+      <div className="atlas-wrap" aria-label="Transformer 模型时间树，可横向滚动浏览">
         <div className="atlas" style={{'--count':years.length}}>
-          {lanes.map(([className,label])=><div className={`lane ${className}`} key={className}><span>{label}</span></div>)}
-          {years.map((y,i)=><div className="year" key={y} style={{left:`${(i/(years.length-1))*100}%`}}><span>{y}</span><i></i></div>)}
-          {models.flatMap(m=>m.next.map(target=>{
-            const n=models.find(x=>x.id===target); if(!n) return null;
-            const start=((m.year-2017)+(Number(m.date.slice(-2))/12))/8*100; const end=((n.year-2017)+(Number(n.date.slice(-2))/12))/8*100;
-            const y1=laneFor(m), y2=laneFor(n); const width=Math.max(1,end-start); const isDown=y2>=y1;
-            return <div key={`${m.id}-${target}`} className={`connector ${isDown?'down':'up'} branch-${branchFor(m)}`} style={{left:`${start}%`,top:`${Math.min(y1,y2)}%`,'--width':`${width}%`,'--height':`${Math.max(2,Math.abs(y2-y1))}%`,'--delay':`${(m.year-2017)*.09}s`}}></div>
-          }))}
-          {models.map(m=>{
-            const x=((m.year-2017)+(Number(m.date.slice(-2))/12))/8*100; const isMulti=m.modality!=='Text';
-            return <div key={m.id} className={`node ${m.level==='核心'?'core-node':'important-node'} branch-${branchFor(m)} ${isMulti?'multi':''}`} style={{left:`${x}%`,top:`${laneFor(m)}%`,'--delay':`${(m.year-2017)*.1+(Number(m.date.slice(-2))/120)}s`}}><span className="node-mark">{markFor(m)}</span><span className="node-card"><b>{m.name}</b><small>{m.date}</small></span></div>
+          <div className="lane-labels" aria-hidden="true">{lanes.map(([className,label])=><span className={className} key={className}>{label}</span>)}</div>
+          {years.map((y,i)=><div className={`year ${i===0?'year-start':''}`} key={y} style={{left:`${(i/(years.length-1))*100}%`}}><span>{y}</span><i></i></div>)}
+          <svg className="connections" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+            <defs><marker id="mind-arrow" markerWidth="1" markerHeight="1" refX=".88" refY=".5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 .95 .5 0 1z" fill="context-stroke" /></marker></defs>
+            {models.flatMap(model => model.next.map(targetId => {
+              const target = modelById.get(targetId); if (!target) return null;
+              const from = positionFor(model); const to = positionFor(target);
+              const start = from.x + 1.55; const end = to.x - 1.7; const span = Math.max(1, end - start);
+              const path = `M ${start} ${from.y} C ${start + span * .42} ${from.y}, ${end - span * .42} ${to.y}, ${end} ${to.y}`;
+              return <path key={`${model.id}-${targetId}`} className={`connection branch-${branchFor(model)}`} d={path} pathLength="1" markerEnd="url(#mind-arrow)" style={{'--delay':`${(model.year-2017)*.075}s`}} />;
+            }))}
+          </svg>
+          {models.map((model,index)=>{
+            const position=positionFor(model); const isMulti=model.modality!=='Text'; const labelUp=(index + Math.round(position.y)) % 3 === 0;
+            return <div key={model.id} className={`node ${model.level==='核心'?'core-node':'important-node'} branch-${branchFor(model)} ${isMulti?'multi':''} ${labelUp?'label-up':''}`} style={{left:`${position.x}%`,top:`${position.y}%`,'--delay':`${(model.year-2017)*.075+(Number(model.date.slice(-2))/140)}s`}}><span className="node-mark">{markFor(model)}</span><span className="node-card"><b>{model.name}</b><small>{model.date}</small></span></div>
           })}
         </div>
       </div>
@@ -97,5 +90,11 @@ function App(){
 
 function branchFor(m){ if(m.architecture==='MoE' || m.tags.includes('Reasoning')) return 'reasoning'; if(m.modality!=='Text') return 'multimodal'; if(m.architecture==='Encoder-only' || m.architecture==='Encoder–Decoder') return 'understanding'; return 'generation'; }
 function laneFor(m){ return {generation:18,understanding:39,multimodal:62,reasoning:83}[branchFor(m)]; }
+function positionFor(model){
+  const siblings=models.filter(item=>item.year===model.year && branchFor(item)===branchFor(model)).sort((a,b)=>a.date.localeCompare(b.date)||a.name.localeCompare(b.name));
+  const index=siblings.findIndex(item=>item.id===model.id); const middle=(siblings.length-1)/2;
+  const month=Number(model.date.slice(-2));
+  return { x:((model.year-2017)+(month/12))/8*100+(index-middle)*.18, y:laneFor(model)+(index-middle)*6.2 };
+}
 function markFor(m){ if(/GPT|ChatGPT|o1/.test(m.name)) return '◎'; if(/Gemini/.test(m.name)) return '✦'; if(/LLaMA/.test(m.name)) return 'L'; if(/Qwen/.test(m.name)) return 'Q'; if(/DeepSeek/.test(m.name)) return 'D'; if(/Mistral|Mixtral/.test(m.name)) return 'M'; if(/BERT|RoBERTa|XLNet|T5/.test(m.name)) return 'B'; if(/ViT|CLIP|Flamingo|LLaVA/.test(m.name)) return '◈'; return 'T'; }
 createRoot(document.getElementById('root')).render(<App/>);
