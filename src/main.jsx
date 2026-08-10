@@ -1,4 +1,3 @@
-import { useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import './styles.css';
 
@@ -52,35 +51,10 @@ const architectures = ['全部架构','Encoder-only','Decoder-only','Encoder–D
 const modalities = ['全部模态','Text','Vision','Multimodal'];
 
 function App(){
-  const [path, setPath] = useState('all');
-  const [query, setQuery] = useState('');
-  const [architecture, setArchitecture] = useState('全部架构');
-  const [modality, setModality] = useState('全部模态');
-  const [openOnly, setOpenOnly] = useState(false);
-  const [chinaOnly, setChinaOnly] = useState(false);
-  const [connections, setConnections] = useState(true);
-  const [selected, setSelected] = useState(models.find(m=>m.id==='transformer'));
-
-  const activePath = paths[path];
-  const visible = useMemo(() => models.filter(m => {
-    const text = `${m.name} ${m.alias||''} ${m.org} ${m.tags.join(' ')} ${m.innovation}`.toLowerCase();
-    return (!query || text.includes(query.toLowerCase())) &&
-      (architecture==='全部架构' || m.architecture===architecture) &&
-      (modality==='全部模态' || m.modality===modality) &&
-      (!openOnly || m.open) && (!chinaOnly || m.china);
-  }), [query, architecture, modality, openOnly, chinaOnly]);
-  const visibleIds = new Set(visible.map(m=>m.id));
-  const pathIds = new Set(activePath.ids);
-  const exportPath = () => {
-    const sequence = models.filter(m=>pathIds.has(m.id)).sort((a,b)=>a.date.localeCompare(b.date));
-    const text = `# ${activePath.label}\n\n${activePath.hint}\n\n` + sequence.map((m,i)=>`${i+1}. ${m.date} · ${m.name}（${m.org}）\n   ${m.innovation}`).join('\n\n');
-    navigator.clipboard?.writeText(text);
-    const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([text],{type:'text/markdown'})); a.download='transformer-learning-path.md'; a.click(); URL.revokeObjectURL(a.href);
-  };
+  const nodeIds = new Set(models.map(m => m.id));
   return <main>
     <header className="topbar">
       <a className="brand" href="#top" aria-label="Transformer Atlas 首页"><span className="brand-mark">✦</span><span>Transformer <b>Atlas</b></span></a>
-      <nav><a href="#map">图谱</a><a href="#paths">路径</a></nav>
       <div className="top-meta">2017—2025</div>
     </header>
 
@@ -90,55 +64,29 @@ function App(){
       <h1>理解模型，<br/><em>从脉络开始。</em></h1>
       <p>2017—2025 的关键分叉。</p>
       <div className="hero-actions"><a href="#map" className="button primary">查看图谱 <span>↓</span></a></div>
-      <div className="hero-stats"><div><strong>9</strong><span>年份</span></div><div><strong>{models.length}</strong><span>节点</span></div><div><strong>6</strong><span>路径</span></div></div>
-    </section>
-
-    <section className="path-strip" id="paths">
-      <div><span className="section-kicker">LEARNING PATH</span><h2>选择一条路径</h2></div>
-      <label className="path-select"><span>路径</span><select value={path} onChange={e=>setPath(e.target.value)} aria-label="选择学习路径">{Object.entries(paths).map(([id,p])=><option key={id} value={id}>{p.label}</option>)}</select></label>
+      <div className="hero-stats"><div><strong>2017</strong><span>开始</span></div><div><strong>2025</strong><span>现在</span></div></div>
     </section>
 
     <section className="map-section" id="map">
-      <div className="map-heading"><div><span className="section-kicker">ATLAS</span><h2>{activePath.label}<small>{activePath.hint}</small></h2></div><button className="export-button" onClick={exportPath}>导出</button></div>
-      <div className="filter-bar">
-        <label className="search"><span>⌕</span><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="搜索" /></label>
-        <select value={architecture} onChange={e=>setArchitecture(e.target.value)} aria-label="筛选架构">{architectures.map(x=><option key={x}>{x}</option>)}</select>
-        <select value={modality} onChange={e=>setModality(e.target.value)} aria-label="筛选模态">{modalities.map(x=><option key={x}>{x}</option>)}</select>
-        <button className={openOnly?'toggle active':'toggle'} onClick={()=>setOpenOnly(!openOnly)}>开源</button>
-        <button className={chinaOnly?'toggle active':'toggle'} onClick={()=>setChinaOnly(!chinaOnly)}>中国</button>
-        <button className={connections?'line-toggle active':'line-toggle'} onClick={()=>setConnections(!connections)}><span></span>连线</button>
-      </div>
-      <div className="legend"><span><i className="dot core"></i>核心</span><span><i className="dot important"></i>重要</span><span><i className="legend-line"></i>血缘</span><span className="legend-branch">✦ 多模态</span></div>
+      <div className="map-heading"><div><span className="section-kicker">FULL TIMELINE</span><h2>完整时间树</h2></div></div>
       <div className="atlas-wrap">
         <div className="lane-labels"><span>GENERATION</span><span>UNDERSTANDING</span><span>VISION &amp; MULTIMODAL</span><span>SPARSE &amp; REASONING</span></div>
         <div className="atlas" style={{'--count':years.length}}>
           <div className="lane lane-one"></div><div className="lane lane-two"></div><div className="lane lane-three"></div><div className="lane lane-four"></div>
           {years.map((y,i)=><div className="year" key={y} style={{left:`${(i/(years.length-1))*100}%`}}><span>{y}</span><i></i></div>)}
-          {connections && models.flatMap(m=>m.next.map(target=>{
-            const n=models.find(x=>x.id===target); if(!n || !visibleIds.has(m.id)||!visibleIds.has(n.id)) return null;
+          {models.flatMap(m=>m.next.map(target=>{
+            const n=models.find(x=>x.id===target); if(!n || !nodeIds.has(m.id)||!nodeIds.has(n.id)) return null;
             const start=((m.year-2017)+(Number(m.date.slice(-2))/12))/8*100; const end=((n.year-2017)+(Number(n.date.slice(-2))/12))/8*100;
             const y1=laneFor(m), y2=laneFor(n); const width=Math.max(1,end-start);
-            return <div key={`${m.id}-${target}`} className={pathIds.has(m.id)&&pathIds.has(target)?'line active-line':'line'} style={{left:`${start}%`,top:`${y1}%`,width:`${width}%`,transform:`rotate(${Math.atan2(y2-y1,width*1.8)*180/Math.PI}deg)`}}></div>
+            return <div key={`${m.id}-${target}`} className="line active-line" style={{left:`${start}%`,top:`${y1}%`,width:`${width}%`,transform:`rotate(${Math.atan2(y2-y1,width*1.8)*180/Math.PI}deg)`}}></div>
           }))}
           {models.map(m=>{
-            const x=((m.year-2017)+(Number(m.date.slice(-2))/12))/8*100; const highlight=pathIds.has(m.id); const shown=visibleIds.has(m.id); const isMulti=m.modality!=='Text';
-            return <button key={m.id} onClick={()=>setSelected(m)} className={`node ${m.level==='核心'?'core-node':'important-node'} ${highlight?'highlight':''} ${!shown?'filtered':''} ${selected?.id===m.id?'picked':''} ${isMulti?'multi':''}`} style={{left:`${x}%`,top:`${laneFor(m)}%`}} aria-label={`查看 ${m.name} 详情`}><span className="node-pulse"></span><span className="node-dot"></span><span className="node-card"><b>{m.name}</b><small>{m.date} · {m.params}</small></span></button>
+            const x=((m.year-2017)+(Number(m.date.slice(-2))/12))/8*100; const isMulti=m.modality!=='Text';
+            return <div key={m.id} className={`node ${m.level==='核心'?'core-node':'important-node'} highlight ${isMulti?'multi':''}`} style={{left:`${x}%`,top:`${laneFor(m)}%`}}><span className="node-dot"></span><span className="node-card"><b>{m.name}</b><small>{m.date}</small></span></div>
           })}
         </div>
       </div>
-      <div className="map-note">横向滚动 · 点击节点查看</div>
     </section>
-
-    <section className="detail-section">
-      <div className="detail-card">
-        <div className="detail-top"><div><span className="section-kicker">MODEL · {selected.date}</span><h2>{selected.name} {selected.alias&&<small>/ {selected.alias}</small>}</h2></div><span className={`level ${selected.level==='核心'?'core-level':''}`}>{selected.level}</span></div>
-        <p className="innovation">{selected.innovation}</p><p className="desc">{selected.desc.split('。')[0]}。</p>
-        <div className="detail-grid"><div><span>研发机构</span><b>{selected.org}</b></div><div><span>架构类型</span><b>{selected.architecture}</b></div><div><span>模态</span><b>{selected.modality}</b></div><div><span>参数量</span><b>{selected.params}</b></div></div>
-        <div className="detail-bottom"><div className="tags">{selected.tags.map(t=><span key={t}>#{t}</span>)}</div><div className="resource-links"><a href={`https://arxiv.org/search/?query=${encodeURIComponent(selected.name)}&searchtype=all`} target="_blank" rel="noreferrer">论文 ↗</a>{selected.open?<a href={`https://huggingface.co/models?search=${encodeURIComponent(selected.name)}`} target="_blank" rel="noreferrer">权重 ↗</a>:<span>闭源模型</span>}</div></div>
-      </div>
-      <aside className="successors"><span className="section-kicker">NEXT</span><h3>后继</h3>{selected.next.length?selected.next.map(id=>{const n=models.find(m=>m.id===id);return <button key={id} onClick={()=>setSelected(n)}><span className="mini-dot"></span><b>{n.name}</b><small>{n.date}</small><i>→</i></button>}):<p>当前分支终点。</p>}</aside>
-    </section>
-    <footer><span>TRANSFORMER ATLAS</span><span>2017—2025</span></footer>
   </main>
 }
 
