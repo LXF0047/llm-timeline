@@ -60,7 +60,6 @@ function App(){
   const [chinaOnly, setChinaOnly] = useState(false);
   const [connections, setConnections] = useState(true);
   const [selected, setSelected] = useState(models.find(m=>m.id==='transformer'));
-  const [showGuide, setShowGuide] = useState(true);
 
   const activePath = paths[path];
   const visible = useMemo(() => models.filter(m => {
@@ -81,35 +80,35 @@ function App(){
   return <main>
     <header className="topbar">
       <a className="brand" href="#top" aria-label="Transformer Atlas 首页"><span className="brand-mark">✦</span><span>Transformer <b>Atlas</b></span></a>
-      <nav><a href="#map">路线图</a><a href="#paths">学习路径</a><a href="#about">使用说明</a></nav>
-      <div className="top-meta"><span className="live-dot"></span> 2017—2025 · {models.length} 个关键节点</div>
+      <nav><a href="#map">图谱</a><a href="#paths">路径</a></nav>
+      <div className="top-meta">2017—2025</div>
     </header>
 
     <section className="hero" id="top">
       <div className="hero-grid"></div><div className="orb orb-one"></div><div className="orb orb-two"></div>
-      <div className="eyebrow">LEARNING THE EVOLUTION OF AI</div>
-      <h1>一张图，看懂<br/><em>Transformer 的生长史。</em></h1>
-      <p>沿时间前进，沿血缘深入。从 2017 的注意力机制，到今天的推理与原生多模态，建立你的模型认知坐标系。</p>
-      <div className="hero-actions"><a href="#map" className="button primary">探索演进地图 <span>↓</span></a><button className="button ghost" onClick={()=>setShowGuide(true)}>选择学习路径</button></div>
-      <div className="hero-stats"><div><strong>9</strong><span>演进年份</span></div><div><strong>6</strong><span>预设学习路径</span></div><div><strong>{models.filter(m=>m.open).length}</strong><span>开放权重节点</span></div></div>
+      <div className="eyebrow">THE TRANSFORMER ERA</div>
+      <h1>理解模型，<br/><em>从脉络开始。</em></h1>
+      <p>2017—2025 的关键分叉。</p>
+      <div className="hero-actions"><a href="#map" className="button primary">查看图谱 <span>↓</span></a></div>
+      <div className="hero-stats"><div><strong>9</strong><span>年份</span></div><div><strong>{models.length}</strong><span>节点</span></div><div><strong>6</strong><span>路径</span></div></div>
     </section>
 
     <section className="path-strip" id="paths">
-      <div><span className="section-kicker">SELECT A ROUTE</span><h2>从你的目标开始学习</h2></div>
-      <div className="path-buttons">{Object.entries(paths).map(([id,p])=><button key={id} className={path===id?'path-button selected':'path-button'} onClick={()=>{setPath(id);setShowGuide(false)}}>{p.label}</button>)}</div>
+      <div><span className="section-kicker">LEARNING PATH</span><h2>选择一条路径</h2></div>
+      <label className="path-select"><span>路径</span><select value={path} onChange={e=>setPath(e.target.value)} aria-label="选择学习路径">{Object.entries(paths).map(([id,p])=><option key={id} value={id}>{p.label}</option>)}</select></label>
     </section>
 
     <section className="map-section" id="map">
-      <div className="map-heading"><div><span className="section-kicker">INTERACTIVE ATLAS</span><h2>{activePath.label}<small>{activePath.hint}</small></h2></div><button className="export-button" onClick={exportPath}>↓ 导出文字路线</button></div>
+      <div className="map-heading"><div><span className="section-kicker">ATLAS</span><h2>{activePath.label}<small>{activePath.hint}</small></h2></div><button className="export-button" onClick={exportPath}>导出</button></div>
       <div className="filter-bar">
-        <label className="search"><span>⌕</span><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="搜索模型、机构或技术" /></label>
+        <label className="search"><span>⌕</span><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="搜索" /></label>
         <select value={architecture} onChange={e=>setArchitecture(e.target.value)} aria-label="筛选架构">{architectures.map(x=><option key={x}>{x}</option>)}</select>
         <select value={modality} onChange={e=>setModality(e.target.value)} aria-label="筛选模态">{modalities.map(x=><option key={x}>{x}</option>)}</select>
-        <button className={openOnly?'toggle active':'toggle'} onClick={()=>setOpenOnly(!openOnly)}>开放权重</button>
-        <button className={chinaOnly?'toggle active':'toggle'} onClick={()=>setChinaOnly(!chinaOnly)}>中国相关</button>
-        <button className={connections?'line-toggle active':'line-toggle'} onClick={()=>setConnections(!connections)}><span></span>血缘连线</button>
+        <button className={openOnly?'toggle active':'toggle'} onClick={()=>setOpenOnly(!openOnly)}>开源</button>
+        <button className={chinaOnly?'toggle active':'toggle'} onClick={()=>setChinaOnly(!chinaOnly)}>中国</button>
+        <button className={connections?'line-toggle active':'line-toggle'} onClick={()=>setConnections(!connections)}><span></span>连线</button>
       </div>
-      <div className="legend"><span><i className="dot core"></i>核心节点</span><span><i className="dot important"></i>重要节点</span><span><i className="legend-line"></i>直接血缘 / 启发</span><span className="legend-branch">✦ 多模态 / 视觉分支</span></div>
+      <div className="legend"><span><i className="dot core"></i>核心</span><span><i className="dot important"></i>重要</span><span><i className="legend-line"></i>血缘</span><span className="legend-branch">✦ 多模态</span></div>
       <div className="atlas-wrap">
         <div className="lane-labels"><span>GENERATION</span><span>UNDERSTANDING</span><span>VISION &amp; MULTIMODAL</span><span>SPARSE &amp; REASONING</span></div>
         <div className="atlas" style={{'--count':years.length}}>
@@ -127,23 +126,19 @@ function App(){
           })}
         </div>
       </div>
-      <div className="map-note"><span>↔</span> 拖动下方横向区域或使用触控板横向浏览完整时间轴 · 点击任意节点查看其创新与后继</div>
+      <div className="map-note">横向滚动 · 点击节点查看</div>
     </section>
 
     <section className="detail-section">
       <div className="detail-card">
-        <div className="detail-top"><div><span className="section-kicker">MODEL NOTE · {selected.date}</span><h2>{selected.name} {selected.alias&&<small>/ {selected.alias}</small>}</h2></div><span className={`level ${selected.level==='核心'?'core-level':''}`}>{selected.level}节点</span></div>
-        <p className="innovation">“{selected.innovation}”</p><p className="desc">{selected.desc}</p>
+        <div className="detail-top"><div><span className="section-kicker">MODEL · {selected.date}</span><h2>{selected.name} {selected.alias&&<small>/ {selected.alias}</small>}</h2></div><span className={`level ${selected.level==='核心'?'core-level':''}`}>{selected.level}</span></div>
+        <p className="innovation">{selected.innovation}</p><p className="desc">{selected.desc.split('。')[0]}。</p>
         <div className="detail-grid"><div><span>研发机构</span><b>{selected.org}</b></div><div><span>架构类型</span><b>{selected.architecture}</b></div><div><span>模态</span><b>{selected.modality}</b></div><div><span>参数量</span><b>{selected.params}</b></div></div>
         <div className="detail-bottom"><div className="tags">{selected.tags.map(t=><span key={t}>#{t}</span>)}</div><div className="resource-links"><a href={`https://arxiv.org/search/?query=${encodeURIComponent(selected.name)}&searchtype=all`} target="_blank" rel="noreferrer">论文 ↗</a>{selected.open?<a href={`https://huggingface.co/models?search=${encodeURIComponent(selected.name)}`} target="_blank" rel="noreferrer">权重 ↗</a>:<span>闭源模型</span>}</div></div>
       </div>
-      <aside className="successors"><span className="section-kicker">BLOODLINE EXIT</span><h3>直接后继</h3>{selected.next.length?selected.next.map(id=>{const n=models.find(m=>m.id===id);return <button key={id} onClick={()=>setSelected(n)}><span className="mini-dot"></span><b>{n.name}</b><small>{n.date}</small><i>→</i></button>}):<p>这是当前路线中的叶节点。可切换其他路径，继续探索同一时期的分支。</p>}</aside>
+      <aside className="successors"><span className="section-kicker">NEXT</span><h3>后继</h3>{selected.next.length?selected.next.map(id=>{const n=models.find(m=>m.id===id);return <button key={id} onClick={()=>setSelected(n)}><span className="mini-dot"></span><b>{n.name}</b><small>{n.date}</small><i>→</i></button>}):<p>当前分支终点。</p>}</aside>
     </section>
-
-    <section className="about" id="about"><span className="section-kicker">HOW TO READ THE MAP</span><h2>时间让你看见先后，<br/>血缘让你理解为什么。</h2><div className="about-grid"><p><b>先选路线。</b>如果是首次学习，推荐完整时间线；如果已经知道目标，就沿 Decoder-only 或多模态分支深入。</p><p><b>再点节点。</b>每个节点都保留当时最关键的一项创新，帮助你避开“只记参数、不懂变化”的陷阱。</p><p><b>最后回看分叉。</b>模型的价值不止于它自己，还在于它打开了哪些后续路线。</p></div></section>
-
-    {showGuide && <div className="modal-backdrop" onClick={()=>setShowGuide(false)}><div className="guide" onClick={e=>e.stopPropagation()}><button className="close" onClick={()=>setShowGuide(false)}>×</button><span className="section-kicker">CHOOSE YOUR START</span><h2>你想从哪条线开始？</h2><p>没有正确答案。先选一个与你当前目标最贴近的入口。</p><div className="guide-options">{Object.entries(paths).filter(([id])=>id!=='all').map(([id,p])=><button key={id} onClick={()=>{setPath(id);setShowGuide(false);document.querySelector('#map')?.scrollIntoView({behavior:'smooth'})}}><b>{p.label}</b><span>{p.hint}</span><i>→</i></button>)}</div><button className="start-all" onClick={()=>{setPath('all');setShowGuide(false)}}>我想先看完整时间线</button></div></div>}
-    <footer><span>TRANSFORMER ATLAS</span><span>为建立整体认知而设计 · 持续更新</span></footer>
+    <footer><span>TRANSFORMER ATLAS</span><span>2017—2025</span></footer>
   </main>
 }
 
