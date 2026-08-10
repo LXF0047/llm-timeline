@@ -102,8 +102,9 @@ function App(){
             <defs><marker id="mind-arrow" markerWidth="1" markerHeight="1" refX=".88" refY=".5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0 .95 .5 0 1z" fill="context-stroke" /></marker></defs>
             {timelineEdges.map((edge,index) => {
               const from = layoutFor(edge.source); const to = layoutFor(edge.target); const siblings=timelineEdges.filter(item=>item.source.id===edge.source.id); const siblingIndex=siblings.findIndex(item=>item.target.id===edge.target.id);
-              const sourcePort=portOffset(siblingIndex,siblings.length); const start = from.x + 1.45; const end = to.x - 1.7; const span = Math.max(1, end - start); const lead = Math.min(8.6, span * .47);
-              const path = `M ${start} ${from.y+sourcePort} C ${start + lead} ${from.y+sourcePort}, ${end - lead} ${to.y}, ${end} ${to.y}`;
+              const sourcePort=portOffset(siblingIndex,siblings.length); const sourceY=from.y+sourcePort; const start = from.x + 1.45; const end = to.x - 1.7; const span = Math.max(1, end - start); const lead = Math.min(8.6, span * .47); const verticalDelta=to.y-sourceY;
+              const approachX=Math.min(Math.max(2.2,Math.abs(verticalDelta)*.52),Math.max(2.2,span*.38)); const approachY=Math.sign(verticalDelta)*Math.min(8.5,Math.abs(verticalDelta)*.45);
+              const path = `M ${start} ${sourceY} C ${start + lead} ${sourceY}, ${end - approachX} ${to.y-approachY}, ${end} ${to.y}`;
               return <path key={`${edge.source.id}-${edge.target.id}`} className={`connection branch-${branchFor(edge.source)}`} d={path} pathLength="1" markerEnd="url(#mind-arrow)" style={{'--delay':`${(edge.source.year-2017)*.075+index*.012}s`}} />;
             })}
           </svg>
