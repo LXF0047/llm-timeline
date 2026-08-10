@@ -56,10 +56,14 @@ function App(){
     const base=positionFor(model); const manual=manualPositions[model.id];
     return {x:warpTimeline(base.x,timelineAnchors),y:manual?.y??base.y};
   };
-  const setNodePosition=(id,x,y)=>setManualPositions(current=>({...current,[id]:{x:clamp(x,1.4,98.1),y:clamp(y,6,94)}}));
+  const setNodePosition=(id,x,y)=>{
+    const bounds=laneBounds(modelById.get(id));
+    setManualPositions(current=>({...current,[id]:{x:clamp(x,1.4,98.1),y:dampToBounds(y,bounds.min,bounds.max)}}));
+  };
   const moveNode=(id,deltaX,deltaY)=>setManualPositions(current=>{
     const origin=current[id]||positionFor(modelById.get(id));
-    return {...current,[id]:{x:clamp(origin.x+deltaX,1.4,98.1),y:clamp(origin.y+deltaY,6,94)}};
+    const bounds=laneBounds(modelById.get(id));
+    return {...current,[id]:{x:clamp(origin.x+deltaX,1.4,98.1),y:clamp(origin.y+deltaY,bounds.min,bounds.max)}};
   });
   const beginDrag=(event,model)=>{
     if(model.id==='transformer') return;
@@ -72,7 +76,12 @@ function App(){
     const bounds=atlasRef.current.getBoundingClientRect();
     setNodePosition(dragging.id,(event.clientX-bounds.left)/bounds.width*100,(event.clientY-bounds.top)/bounds.height*100);
   };
-  const endDrag=event=>{ if(dragging&&event.pointerId===dragging.pointerId) setDragging(null); };
+  const endDrag=event=>{
+    if(!dragging||event.pointerId!==dragging.pointerId) return;
+    const id=dragging.id; const bounds=laneBounds(modelById.get(id));
+    setManualPositions(current=>({...current,[id]:{...current[id],y:clamp(current[id].y,bounds.min,bounds.max)}}));
+    setDragging(null);
+  };
   const resetNode=id=>setManualPositions(current=>{const next={...current}; delete next[id]; return next;});
   return <>
     <a className="skip-link" href="#main-content">跳到主要内容</a>
@@ -132,6 +141,13 @@ function yearPosition(year){ return year<2023 ? ((year-2017)/6)*42 : 42+((year-2
 function timelinePosition(year,month){ return year<2023 ? ((year-2017+(month/12))/6)*42 : 42+((year-2023+(month/12))/2.5)*58; }
 function portOffset(index,count){ return (index-(count-1)/2)*.72; }
 function clamp(value,min,max){ return Math.min(max,Math.max(min,value)); }
+function laneBounds(model){ return {generation:{min:7,max:40},understanding:{min:39,max:66},multimodal:{min:67,max:94}}[branchFor(model)]; }
+function dampToBounds(value,min,max){
+  const limit=2.4;
+  if(value<min) return min-limit*(1-Math.exp(-(min-value)/4));
+  if(value>max) return max+limit*(1-Math.exp(-(value-max)/4));
+  return value;
+}
 function makeTimelineAnchors(manualPositions){
   const anchors=[{from:0,to:0},{from:100,to:100}];
   Object.entries(manualPositions).forEach(([id,position])=>{
